@@ -73,9 +73,17 @@ async function runCommand(command: string, args: string[], env?: Partial<NodeJS.
   return `${stdout}${stderr}`.trim();
 }
 
+function resolveOpenClawPath() {
+  return process.env.OPENCLAW_PATH ?? "openclaw";
+}
+
+function resolveGogPath() {
+  return process.env.GOG_PATH ?? "gog";
+}
+
 export async function getOpenClawStatus(): Promise<OpenClawStatus> {
   try {
-    const raw = await runCommand("openclaw", ["gateway", "status"]);
+    const raw = await runCommand(resolveOpenClawPath(), ["gateway", "status"]);
     const runtime = lineValue(raw, "Runtime");
     const bindPort = lineValue(raw, "Gateway");
     const bind = bindPort.match(/bind=([^,]+)/)?.[1]?.trim() ?? "loopback";
@@ -165,10 +173,10 @@ export async function getAgendaEvents(): Promise<AgendaEvent[]> {
 
   try {
     const raw = await runCommand(
-      "gog",
+      resolveGogPath(),
       ["calendar", "events", "primary", "--from", fromIso, "--to", toIso, "--json", "--no-input"],
       {
-        PATH: `${process.env.HOME}/go/bin:${process.env.PATH ?? ""}`,
+        PATH: `${process.env.HOME}/go/bin:/usr/local/bin:${process.env.PATH ?? ""}`,
         GOG_ACCOUNT: process.env.GOG_ACCOUNT ?? "tonybigclawbowski@gmail.com",
       },
     );
