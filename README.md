@@ -2,12 +2,14 @@
 
 Linear-inspired local dashboard for OpenClaw operations.
 
-## What changed in v2
+## What changed in v3
 
 - Real **OpenClaw status** via `app/api/openclaw/route.ts`, backed by `openclaw gateway status`
 - Real **calendar agenda** via `app/api/calendar/agenda/route.ts`, backed by `gog calendar events primary --from YYYY-MM-DD --to YYYY-MM-DD`
-- Lightweight **command palette** shell with `Ctrl+K`
-- **Tools launcher** wired to local sections and local routes
+- New **Gmail inbox panel** via `app/api/gmail/inbox/route.ts`, backed by local `gog gmail search` in read-only mode
+- Better **empty/error states** for Gmail so the UI is still useful when Google or auth gets moody
+- New **quick actions** panel with safe local actions and copyable commands instead of risky write buttons
+- Upgraded **command palette** with Gmail/API jumps and command copy support
 - Kept **localhost-only assumptions** intact
 
 ## Run locally
@@ -19,9 +21,16 @@ npm run dev
 
 Then open <http://127.0.0.1:3000>.
 
+## Validate
+
+```bash
+npm run lint
+npm run build
+```
+
 ## Docker
 
-This repo now includes separate Docker setups for development and production.
+This repo includes separate Docker setups for development and production.
 
 ### Docker dev
 
@@ -72,7 +81,7 @@ docker compose -f compose.prod.yml logs -f
 
 These are supported by the app and Docker compose files:
 
-- `GOG_ACCOUNT` — Google account used for calendar reads
+- `GOG_ACCOUNT` — Google account used for Gmail/calendar reads
 - `OPENCLAW_PATH` — path to the `openclaw` binary (default: `openclaw`)
 - `GOG_PATH` — path to the `gog` binary (default: `gog`)
 
@@ -88,6 +97,6 @@ This dashboard expects:
 
 - `GET /api/openclaw`
 - `GET /api/calendar/agenda`
+- `GET /api/gmail/inbox`
 
-Both are intentionally local-first and suitable for localhost use.
-st use.
+All are intentionally local-first and suitable for localhost use.

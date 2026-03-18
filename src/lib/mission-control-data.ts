@@ -3,6 +3,8 @@ import { execFile as execFileCallback } from "node:child_process";
 import os from "node:os";
 
 const execFile = promisify(execFileCallback);
+const DEFAULT_ACCOUNT = "tonybigclawbowski@gmail.com";
+const COMMAND_TIMEOUT_MS = 12000;
 
 export type OpenClawStatus = {
   ok: boolean;
@@ -43,6 +45,65 @@ export type HostHealth = {
   platform: string;
 };
 
+export type GmailThreadSummary = {
+  id: string;
+  subject: string;
+  snippet: string;
+  participants: string;
+  lastFrom: string;
+  lastMessageAt: string;
+  messageCount: number;
+  unread: boolean;
+  labels: string[];
+};
+
+export type GmailInboxState = {
+  ok: boolean;
+  summary: string;
+  account: string;
+  query: string;
+  threads: GmailThreadSummary[];
+  updatedAt: string;
+  error?: string;
+  emptyReason?: string;
+};
+
+type GogEvent = {
+  id?: string;
+  summary?: string;
+  start?: { date?: string; dateTime?: string };
+  end?: { date?: string; dateTime?: string };
+  location?: string;
+  description?: string;
+  htmlLink?: string;
+  organizer?: { email?: string };
+};
+
+type GogThread = {
+  id?: string;
+  threadId?: string;
+  subject?: string;
+  snippet?: string;
+  from?: string;
+  participants?: string[];
+  labelIds?: string[];
+  messageCount?: number;
+  messagesTotal?: number;
+  historyId?: string;
+  internalDate?: string | number;
+  lastMessageDate?: string;
+  firstMessageDate?: string;
+  messages?: Array<{
+    id?: string;
+    threadId?: string;
+    subject?: string;
+    snippet?: string;
+    from?: string;
+    internalDate?: string | number;
+    labelIds?: string[];
+  }>;
+};
+
 function lineValue(raw: string, label: string) {
   const line = raw
     .split("\n")
@@ -68,6 +129,7 @@ async function runCommand(command: string, args: string[], env?: Partial<NodeJS.
     cwd: process.cwd(),
     env: { ...process.env, ...env },
     maxBuffer: 1024 * 1024 * 4,
+    timeout: COMMAND_TIMEOUT_MS,
   });
 
   return `${stdout}${stderr}`.trim();
@@ -79,6 +141,18 @@ function resolveOpenClawPath() {
 
 function resolveGogPath() {
   return process.env.GOG_PATH ?? "gog";
+}
+
+function gogEnv(): Partial<NodeJS.ProcessEnv> {
+  return {
+    PATH: `${process.env.HOME}/go/bin:/usr/local/bin:${process.env.PATH ?? ""}`,
+    GOG_ACCOUNT: process.env.GOG_ACCOUNT ?? DEFAULT_ACCOUNT,
+  };
+}
+
+function parseJsonEnvelope<T>(raw: string): T {
+  const parsed = JSON.parse(raw) as { result?: T } & T;
+  return (parsed.result ?? parsed) as T;
 }
 
 export async function getOpenClawStatus(): Promise<OpenClawStatus> {
@@ -135,17 +209,6 @@ export async function getOpenClawStatus(): Promise<OpenClawStatus> {
   }
 }
 
-type GogEvent = {
-  id?: string;
-  summary?: string;
-  start?: { date?: string; dateTime?: string };
-  end?: { date?: string; dateTime?: string };
-  location?: string;
-  description?: string;
-  htmlLink?: string;
-  organizer?: { email?: string };
-};
-
 function normalizeAgendaEvent(event: GogEvent): AgendaEvent {
   const start = event.start?.dateTime ?? event.start?.date ?? "";
   const end = event.end?.dateTime ?? event.end?.date;
@@ -175,16 +238,123 @@ export async function getAgendaEvents(): Promise<AgendaEvent[]> {
     const raw = await runCommand(
       resolveGogPath(),
       ["calendar", "events", "primary", "--from", fromIso, "--to", toIso, "--json", "--no-input"],
-      {
-        PATH: `${process.env.HOME}/go/bin:/usr/local/bin:${process.env.PATH ?? ""}`,
-        GOG_ACCOUNT: process.env.GOG_ACCOUNT ?? "tonybigclawbowski@gmail.com",
-      },
+      gogEnv(),
     );
 
-    const parsed = JSON.parse(raw) as { events?: GogEvent[] };
+    const parsed = parseJsonEnvelope<{ events?: GogEvent[] }>(raw);
     return (parsed.events ?? []).map(normalizeAgendaEvent);
   } catch {
     return [];
+  }
+}
+
+function normalizeTimestamp(value?: string | number) {
+  if (typeof value === "number") {
+    return new Date(value).toISOString();
+  }
+
+  if (typeof value === "string") {
+    if (/^\d+$/.test(value)) {
+      const numeric = Number.parseInt(value, 10);
+      if (value.length > 11) {
+        return new Date(numeric).toISOString();
+      }
+      return new Date(numeric * 1000).toISOString();
+    }
+
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString();
+    }
+  }
+
+  return "";
+}
+
+function firstNonEmpty(...values: Array<string | undefined>) {
+  return values.find((value) => value && value.trim())?.trim() ?? "";
+}
+
+function normalizeThread(thread: GogThread): GmailThreadSummary {
+  const newestMessage = [...(thread.messages ?? [])]
+    .sort((a, b) => {
+      const aTime = Number(new Date(normalizeTimestamp(a.internalDate)).getTime() || 0);
+      const bTime = Number(new Date(normalizeTimestamp(b.internalDate)).getTime() || 0);
+      return bTime - aTime;
+    })
+    .at(0);
+
+  const labels = Array.from(
+    new Set([...(thread.labelIds ?? []), ...(newestMessage?.labelIds ?? [])].filter(Boolean) as string[]),
+  );
+
+  return {
+    id: thread.threadId ?? thread.id ?? `thread-${Math.random().toString(36).slice(2)}`,
+    subject: firstNonEmpty(thread.subject, newestMessage?.subject) || "(no subject)",
+    snippet: firstNonEmpty(thread.snippet, newestMessage?.snippet) || "No preview text returned by gog.",
+    participants:
+      thread.participants?.join(", ") ||
+      firstNonEmpty(thread.from, newestMessage?.from) ||
+      "Participants unavailable",
+    lastFrom: firstNonEmpty(newestMessage?.from, thread.from) || "Unknown sender",
+    lastMessageAt: firstNonEmpty(
+      normalizeTimestamp(thread.lastMessageDate),
+      normalizeTimestamp(newestMessage?.internalDate),
+      normalizeTimestamp(thread.internalDate),
+      normalizeTimestamp(thread.firstMessageDate),
+    ),
+    messageCount: thread.messageCount ?? thread.messagesTotal ?? thread.messages?.length ?? 0,
+    unread: labels.includes("UNREAD"),
+    labels,
+  };
+}
+
+export async function getGmailInbox(): Promise<GmailInboxState> {
+  const account = gogEnv().GOG_ACCOUNT ?? DEFAULT_ACCOUNT;
+  const query = "in:inbox newer_than:14d";
+
+  try {
+    const raw = await runCommand(
+      resolveGogPath(),
+      ["gmail", "search", query, "--max", "6", "--json", "--no-input"],
+      gogEnv(),
+    );
+
+    const parsed = parseJsonEnvelope<{ threads?: GogThread[]; items?: GogThread[]; messages?: GogThread[] }>(raw);
+    const source = parsed.threads ?? parsed.items ?? parsed.messages ?? [];
+    const threads = source.map(normalizeThread);
+
+    if (threads.length === 0) {
+      return {
+        ok: true,
+        summary: "Inbox clear",
+        account,
+        query,
+        threads: [],
+        updatedAt: new Date().toISOString(),
+        emptyReason: "No recent inbox threads matched the local Gmail query.",
+      };
+    }
+
+    return {
+      ok: true,
+      summary: `${threads.length} recent inbox threads`,
+      account,
+      query,
+      threads,
+      updatedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      summary: "Gmail inbox unavailable",
+      account,
+      query,
+      threads: [],
+      updatedAt: new Date().toISOString(),
+      error: formatExecError(error),
+      emptyReason: "Local gog Gmail read failed or timed out.",
+    };
   }
 }
 
@@ -247,4 +417,21 @@ export function formatAgendaDate(value: string, isAllDay: boolean) {
     day: "numeric",
     ...(isAllDay ? {} : { hour: undefined }),
   }).format(date);
+}
+
+export function formatRelativeTimestamp(value: string) {
+  if (!value) return "Time unknown";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const diffMs = date.getTime() - Date.now();
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  const minutes = Math.round(diffMs / 60000);
+  const hours = Math.round(diffMs / 3600000);
+  const days = Math.round(diffMs / 86400000);
+
+  if (Math.abs(minutes) < 60) return rtf.format(minutes, "minute");
+  if (Math.abs(hours) < 48) return rtf.format(hours, "hour");
+  return rtf.format(days, "day");
 }

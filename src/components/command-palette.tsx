@@ -6,8 +6,9 @@ type Action = {
   id: string;
   label: string;
   description: string;
-  href: string;
+  href?: string;
   external?: boolean;
+  command?: string;
 };
 
 const actions: Action[] = [
@@ -31,6 +32,12 @@ const actions: Action[] = [
     href: "/api/calendar/agenda",
   },
   {
+    id: "gmail-json",
+    label: "Inspect Gmail inbox JSON",
+    description: "Open the local read-only Gmail route backed by gog.",
+    href: "/api/gmail/inbox",
+  },
+  {
     id: "jump-openclaw",
     label: "Jump to OpenClaw status section",
     description: "Scroll straight to the system panel.",
@@ -43,16 +50,29 @@ const actions: Action[] = [
     href: "#calendar-agenda",
   },
   {
-    id: "jump-tools",
-    label: "Jump to tools launcher",
-    description: "Get to the local action tiles without clicking around.",
-    href: "#tools-launcher",
+    id: "jump-gmail",
+    label: "Jump to Gmail inbox section",
+    description: "Scroll to the recent inbox summary.",
+    href: "#gmail-inbox",
+  },
+  {
+    id: "jump-actions",
+    label: "Jump to quick actions",
+    description: "Get to the safe local actions and copyable commands.",
+    href: "#quick-actions",
+  },
+  {
+    id: "copy-gateway-status",
+    label: "Copy openclaw gateway status command",
+    description: "Copy the terminal command used by the dashboard status panel.",
+    command: "openclaw gateway status",
   },
 ];
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -75,11 +95,31 @@ export function CommandPalette() {
     if (!normalized) return actions;
 
     return actions.filter((action) => {
-      return [action.label, action.description, action.href].some((field) =>
+      return [action.label, action.description, action.href ?? "", action.command ?? ""].some((field) =>
         field.toLowerCase().includes(normalized),
       );
     });
   }, [query]);
+
+  async function handleAction(action: Action) {
+    if (action.command) {
+      await navigator.clipboard.writeText(action.command);
+      setCopied(action.id);
+      window.setTimeout(() => setCopied((current) => (current === action.id ? null : current)), 1800);
+      setOpen(false);
+      return;
+    }
+
+    if (!action.href) return;
+
+    if (action.external) {
+      window.open(action.href, "_blank", "noreferrer");
+    } else {
+      window.open(action.href, "_self");
+    }
+
+    setOpen(false);
+  }
 
   return (
     <>
@@ -89,7 +129,7 @@ export function CommandPalette() {
         className="flex w-full items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-left text-sm text-zinc-400 transition hover:border-white/15 hover:bg-white/[0.06] hover:text-zinc-200"
       >
         <span className="text-base text-zinc-500">⌘</span>
-        <span className="flex-1">Search tools, jump to logs, crack open a local route…</span>
+        <span className="flex-1">Search tools, jump sections, or copy a safe local command…</span>
         <span className="rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-xs text-zinc-500">
           Ctrl K
         </span>
@@ -119,13 +159,11 @@ export function CommandPalette() {
             <div className="space-y-2">
               {filtered.length > 0 ? (
                 filtered.map((action) => (
-                  <a
+                  <button
+                    type="button"
                     key={action.id}
-                    href={action.href}
-                    target={action.external ? "_blank" : undefined}
-                    rel={action.external ? "noreferrer" : undefined}
-                    onClick={() => setOpen(false)}
-                    className="block rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 transition hover:border-cyan-400/30 hover:bg-cyan-400/8"
+                    onClick={() => void handleAction(action)}
+                    className="block w-full rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-left transition hover:border-cyan-400/30 hover:bg-cyan-400/8"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -133,10 +171,10 @@ export function CommandPalette() {
                         <p className="mt-1 text-sm leading-6 text-zinc-500">{action.description}</p>
                       </div>
                       <span className="rounded-full border border-white/10 bg-black/25 px-2.5 py-1 text-[11px] text-zinc-400">
-                        Open
+                        {copied === action.id ? "Copied" : action.command ? "Copy" : "Open"}
                       </span>
                     </div>
-                  </a>
+                  </button>
                 ))
               ) : (
                 <div className="rounded-2xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-zinc-500">

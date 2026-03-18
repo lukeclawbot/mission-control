@@ -1,8 +1,11 @@
 import { CommandPalette } from "@/components/command-palette";
+import { QuickActions } from "@/components/quick-actions";
 import {
   formatAgendaDate,
   formatAgendaTime,
+  formatRelativeTimestamp,
   getAgendaEvents,
+  getGmailInbox,
   getHostHealth,
   getOpenClawStatus,
 } from "@/lib/mission-control-data";
@@ -25,27 +28,27 @@ const tools = [
     secondaryLabel: "API",
   },
   {
-    name: "Tools",
-    desc: "Open the command palette shell and jump around faster.",
-    accent: "from-emerald-500/20 to-teal-500/5",
-    href: "#command-center",
-    secondaryHref: "#tools-launcher",
-    secondaryLabel: "Section",
+    name: "Inbox",
+    desc: "Read a recent Gmail summary through local gog in read-only mode.",
+    accent: "from-rose-500/20 to-orange-500/5",
+    href: "#gmail-inbox",
+    secondaryHref: "/api/gmail/inbox",
+    secondaryLabel: "API",
   },
   {
-    name: "Docs",
-    desc: "Jump to the API routes and status panel for the local setup.",
-    accent: "from-amber-500/20 to-orange-500/5",
-    href: "/api/openclaw",
-    secondaryHref: "#openclaw-status",
-    secondaryLabel: "Status",
+    name: "Actions",
+    desc: "Safe local moves: refresh data, open routes, copy commands, keep fingers attached.",
+    accent: "from-emerald-500/20 to-teal-500/5",
+    href: "#quick-actions",
+    secondaryHref: "#command-center",
+    secondaryLabel: "Palette",
   },
 ];
 
 const sidebar = [
   { section: "Overview", items: ["Home", "Activity", "Timeline"] },
-  { section: "Operations", items: ["OpenClaw", "Calendar", "Tools", "Health"] },
-  { section: "System", items: ["Settings", "Logs"] },
+  { section: "Operations", items: ["OpenClaw", "Calendar", "Inbox", "Actions"] },
+  { section: "System", items: ["Health", "Routes"] },
 ];
 
 function cx(...parts: Array<string | false | null | undefined>) {
@@ -119,16 +122,18 @@ function ProgressRow({ label, value, note }: { label: string; value: number | nu
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [openClaw, agenda, health] = await Promise.all([
+  const [openClaw, agenda, health, inbox] = await Promise.all([
     getOpenClawStatus(),
     getAgendaEvents(),
     getHostHealth(),
+    getGmailInbox(),
   ]);
 
   const statusPills = [
-    { label: "Gateway", value: openClaw.ok ? "Online" : "Attention", tone: openClaw.ok ? "emerald" : "amber" },
-    { label: "Agenda", value: `${agenda.length} in 7 days`, tone: "sky" },
-    { label: "Host", value: `${health.memoryPercent}% memory`, tone: "violet" },
+    { label: "Gateway", value: openClaw.ok ? "Online" : "Attention" },
+    { label: "Agenda", value: `${agenda.length} in 7 days` },
+    { label: "Inbox", value: inbox.ok ? `${inbox.threads.length} recent` : "Read issue" },
+    { label: "Host", value: `${health.memoryPercent}% memory` },
   ];
 
   return (
@@ -142,7 +147,7 @@ export default async function Home() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-zinc-100">Mission Control</p>
-                <p className="text-xs text-zinc-500">OpenClaw local cockpit v2</p>
+                <p className="text-xs text-zinc-500">OpenClaw local cockpit v3</p>
               </div>
             </div>
           </div>
@@ -179,7 +184,7 @@ export default async function Home() {
           <div className="mt-auto rounded-3xl border border-cyan-400/20 bg-cyan-400/8 p-4">
             <p className="text-sm font-medium text-cyan-100">Local-first by design</p>
             <p className="mt-2 text-sm leading-6 text-cyan-50/75">
-              Loopback gateway, local CLI reads, and zero fake cloud mystery meat.
+              Loopback gateway, local CLI reads, copyable commands, and zero fake cloud mystery meat.
             </p>
           </div>
         </aside>
@@ -190,27 +195,27 @@ export default async function Home() {
               <div>
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
-                    v2 dashboard
+                    v3 dashboard
                   </span>
                   <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-400">
                     localhost-only assumptions
+                  </span>
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-400">
+                    gog Gmail is read-only here
                   </span>
                 </div>
                 <h1 className="text-3xl font-semibold tracking-tight text-white lg:text-4xl">
                   Mission Control
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400 lg:text-base">
-                  Same calm, Linear-ish cockpit — now with real OpenClaw status, real calendar data,
-                  and quick local routes that actually do something.
+                  Same calm, Linear-ish cockpit — now with Gmail inbox visibility, safer local quick actions,
+                  and a little more signal without turning the dashboard into a cursed kitchen sink.
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {statusPills.map((pill) => (
-                  <div
-                    key={pill.label}
-                    className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3"
-                  >
+                  <div key={pill.label} className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
                     <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">{pill.label}</p>
                     <p className="mt-2 text-sm font-semibold text-zinc-100">{pill.value}</p>
                   </div>
@@ -227,7 +232,7 @@ export default async function Home() {
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-3">
                   <StatCard label="Agenda" value={String(agenda.length)} meta="events in the next 7 days" />
-                  <StatCard label="Gateway" value={openClaw.rpcProbe.toUpperCase()} meta={openClaw.probeTarget || "loopback probe"} />
+                  <StatCard label="Inbox" value={String(inbox.threads.length)} meta={inbox.ok ? inbox.summary : "gog read issue"} />
                   <StatCard label="Uptime" value={`${health.uptimeHours}h`} meta={health.hostname} />
                 </div>
               </Panel>
@@ -247,18 +252,12 @@ export default async function Home() {
                           <p className="text-base font-semibold text-zinc-100">{tool.name}</p>
                           <p className="mt-2 text-sm leading-6 text-zinc-400">{tool.desc}</p>
                         </div>
-                        <a
-                          href={tool.href}
-                          className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-xs text-zinc-300"
-                        >
+                        <a href={tool.href} className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-xs text-zinc-300">
                           Open
                         </a>
                       </div>
                       <div className="mt-4 flex gap-2">
-                        <a
-                          href={tool.href}
-                          className="rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs text-zinc-200"
-                        >
+                        <a href={tool.href} className="rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs text-zinc-200">
                           Primary
                         </a>
                         <a
@@ -271,6 +270,10 @@ export default async function Home() {
                     </div>
                   ))}
                 </div>
+              </Panel>
+
+              <Panel id="quick-actions" title="Quick actions" eyebrow="Safe local operations">
+                <QuickActions />
               </Panel>
             </div>
 
@@ -310,6 +313,67 @@ export default async function Home() {
                 </div>
               </Panel>
 
+              <Panel id="gmail-inbox" title="Gmail inbox" eyebrow="Google Gmail · read-only via gog">
+                <div className="mb-4 rounded-2xl border border-white/8 bg-black/20 p-4 text-sm text-zinc-400">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-zinc-100">{inbox.summary}</p>
+                      <p className="mt-1 text-zinc-500">Account: {inbox.account} · Query: {inbox.query}</p>
+                    </div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                      Updated {formatRelativeTimestamp(inbox.updatedAt)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {inbox.ok && inbox.threads.length > 0 ? (
+                    inbox.threads.map((thread) => (
+                      <div key={thread.id} className="rounded-2xl border border-white/8 bg-black/20 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="truncate text-sm font-medium text-zinc-100">{thread.subject}</p>
+                              {thread.unread ? (
+                                <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[11px] text-cyan-300">
+                                  Unread
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="mt-1 text-sm text-zinc-400">{thread.participants}</p>
+                          </div>
+                          <div className="text-right text-xs text-zinc-500">
+                            <p>{formatRelativeTimestamp(thread.lastMessageAt)}</p>
+                            <p className="mt-1">{thread.messageCount} messages</p>
+                          </div>
+                        </div>
+                        <p className="mt-3 line-clamp-2 text-sm leading-6 text-zinc-500">{thread.snippet}</p>
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
+                          <span className="rounded-full border border-white/8 bg-white/[0.03] px-2 py-1">Last from {thread.lastFrom}</span>
+                          {thread.labels.slice(0, 3).map((label) => (
+                            <span key={label} className="rounded-full border border-white/8 bg-white/[0.03] px-2 py-1">
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  ) : inbox.ok ? (
+                    <div className="rounded-2xl border border-dashed border-white/10 bg-black/15 p-5 text-sm text-zinc-500">
+                      {inbox.emptyReason ?? "No recent inbox threads returned. Either inbox zero happened or Gmail is being coy."}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-amber-400/15 bg-amber-400/5 p-5 text-sm text-amber-100/85">
+                      <p className="font-medium text-amber-200">Couldn’t load Gmail from local gog.</p>
+                      <p className="mt-2 leading-6 text-amber-100/70">{inbox.error ?? inbox.emptyReason}</p>
+                      <p className="mt-3 text-amber-100/70">
+                        The UI stays read-only on purpose. Open <a className="underline" href="/api/gmail/inbox">/api/gmail/inbox</a> or copy the gog command from Quick actions if you want the raw story.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </Panel>
+
               <Panel id="calendar-agenda" title="Calendar agenda" eyebrow="Google Calendar · next 7 days">
                 <div className="space-y-3">
                   {agenda.length > 0 ? (
@@ -332,8 +396,7 @@ export default async function Home() {
                     ))
                   ) : (
                     <div className="rounded-2xl border border-dashed border-white/10 bg-black/15 p-5 text-sm text-zinc-500">
-                      No events returned by gog for the next 7 days. Either the calendar is gloriously empty or
-                      Google is keeping its cards close.
+                      No events returned by gog for the next 7 days. Either the calendar is gloriously empty or Google is keeping its cards close.
                     </div>
                   )}
                 </div>
