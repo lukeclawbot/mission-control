@@ -38,6 +38,7 @@ Notes:
 - mounts local `openclaw` + `gog` binaries read-only
 - mounts `~/.openclaw` read-only so the app can read local OpenClaw state
 - uses `GOG_ACCOUNT` from the compose environment
+- dev mode uses webpack instead of Turbopack to avoid CPU instruction compatibility issues on some hosts
 
 Stop it with:
 
@@ -89,3 +90,4 @@ This dashboard expects:
 - `GET /api/calendar/agenda`
 
 Both are intentionally local-first and suitable for localhost use.
+st use.
