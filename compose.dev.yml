@@ -4,22 +4,26 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     container_name: mission-control-dev
+    working_dir: /workspace
     ports:
       - "3000:3000"
     environment:
+      HOME: /home/luke
       NODE_ENV: development
       NEXT_TELEMETRY_DISABLED: "1"
       GOG_ACCOUNT: ${GOG_ACCOUNT:-tonybigclawbowski@gmail.com}
       OPENCLAW_PATH: ${OPENCLAW_PATH:-/usr/local/bin/openclaw}
       GOG_PATH: ${GOG_PATH:-/usr/local/bin/gog}
     volumes:
-      - .:/app
-      - mission-control-node-modules:/app/node_modules
+      - .:/workspace
+      - mission-control-node-modules:/workspace/node_modules
+      - mission-control-next:/workspace/.next
       - /usr/local/bin/openclaw:/usr/local/bin/openclaw:ro
       - /usr/local/bin/gog:/usr/local/bin/gog:ro
-      - /home/luke/.openclaw:/home/node/.openclaw:ro
-      - /home/luke/go:/home/node/go:ro
+      - /home/luke/.openclaw:/home/luke/.openclaw:ro
+      - /home/luke/go:/home/luke/go:ro
     restart: unless-stopped
 
 volumes:
   mission-control-node-modules:
+  mission-control-next:

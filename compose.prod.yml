@@ -4,9 +4,12 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: mission-control
+    user: "1000:1000"
+    working_dir: /workspace
     ports:
       - "3001:3000"
     environment:
+      HOME: /home/luke
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
       GOG_ACCOUNT: ${GOG_ACCOUNT:-tonybigclawbowski@gmail.com}
@@ -15,6 +18,6 @@ services:
     volumes:
       - /usr/local/bin/openclaw:/usr/local/bin/openclaw:ro
       - /usr/local/bin/gog:/usr/local/bin/gog:ro
-      - /home/luke/.openclaw:/home/node/.openclaw:ro
-      - /home/luke/go:/home/node/go:ro
+      - /home/luke/.openclaw:/home/luke/.openclaw:ro
+      - /home/luke/go:/home/luke/go:ro
     restart: unless-stopped
