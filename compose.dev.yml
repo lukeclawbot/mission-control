@@ -12,6 +12,7 @@ services:
       NODE_ENV: development
       NEXT_TELEMETRY_DISABLED: "1"
       GOG_ACCOUNT: ${GOG_ACCOUNT:-tonybigclawbowski@gmail.com}
+      GOG_KEYRING_PASSWORD: ${GOG_KEYRING_PASSWORD}
       OPENCLAW_PATH: ${OPENCLAW_PATH:-/usr/local/bin/openclaw}
       GOG_PATH: ${GOG_PATH:-/usr/local/bin/gog}
     volumes:
@@ -20,7 +21,10 @@ services:
       - mission-control-next:/workspace/.next
       - /usr/local/bin/openclaw:/usr/local/bin/openclaw:ro
       - /usr/local/bin/gog:/usr/local/bin/gog:ro
+      - /etc/ssl/certs:/etc/ssl/certs:ro
+      - /etc/ca-certificates:/etc/ca-certificates:ro
       - /home/luke/.openclaw:/home/luke/.openclaw:ro
+      - /home/luke/.config/gogcli:/home/luke/.config/gogcli:ro
       - /home/luke/go:/home/luke/go:ro
     restart: unless-stopped
 

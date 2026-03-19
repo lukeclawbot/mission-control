@@ -42,6 +42,9 @@ Notes:
 - mounts the repo into the container for live editing
 - mounts local `openclaw` + `gog` binaries read-only
 - mounts `~/.openclaw` read-only so the app can read local OpenClaw state
+- mounts `~/.config/gogcli` read-only so `gog` can see its OAuth client config inside the container
+- installs standard `ca-certificates` in the image so local `gog` HTTPS calls can validate normal TLS chains
+- mounts the host CA trust store read-only so container HTTPS trust can match the host more closely when local network trust differs
 - uses `GOG_ACCOUNT` from the compose environment
 - dev mode uses webpack instead of Turbopack to avoid CPU instruction compatibility issues on some hosts
 - compose runs as host UID/GID `1000:1000` on this machine so mounted local binaries/config remain executable/readable inside the container
@@ -86,7 +89,8 @@ docker compose -f compose.prod.yml logs -f
 
 These are supported by the app and Docker compose files:
 
-- `GOG_ACCOUNT` — Google account used for calendar reads
+- `GOG_ACCOUNT` — Google account used for calendar/Gmail reads
+- `GOG_KEYRING_PASSWORD` — password for the gog file keyring when running non-interactively in Docker
 - `OPENCLAW_PATH` — path to the `openclaw` binary (default: `openclaw`)
 - `GOG_PATH` — path to the `gog` binary (default: `gog`)
 

@@ -1,5 +1,6 @@
 import { CommandPalette } from "@/components/command-palette";
 import { QuickActions } from "@/components/quick-actions";
+import { SidebarNav } from "@/components/sidebar-nav";
 import {
   formatAgendaDate,
   formatAgendaTime,
@@ -46,9 +47,30 @@ const tools = [
 ];
 
 const sidebar = [
-  { section: "Overview", items: ["Home", "Activity", "Timeline"] },
-  { section: "Operations", items: ["OpenClaw", "Calendar", "Inbox", "Actions"] },
-  { section: "System", items: ["Health", "Routes"] },
+  {
+    section: "Overview",
+    items: [
+      { label: "Home", href: "#top" },
+      { label: "Activity", href: "#command-center" },
+      { label: "Timeline", href: "#calendar-agenda" },
+    ],
+  },
+  {
+    section: "Operations",
+    items: [
+      { label: "OpenClaw", href: "#openclaw-status" },
+      { label: "Calendar", href: "#calendar-agenda" },
+      { label: "Inbox", href: "#gmail-inbox" },
+      { label: "Actions", href: "#quick-actions" },
+    ],
+  },
+  {
+    section: "System",
+    items: [
+      { label: "Health", href: "#health-summary" },
+      { label: "Routes", href: "#tools-launcher" },
+    ],
+  },
 ];
 
 function cx(...parts: Array<string | false | null | undefined>) {
@@ -137,7 +159,7 @@ export default async function Home() {
   ];
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(110,125,255,0.16),_transparent_22%),radial-gradient(circle_at_right,_rgba(0,209,255,0.08),_transparent_28%),linear-gradient(180deg,_#0a0b10_0%,_#09090b_100%)] text-zinc-100">
+    <main id="top" className="min-h-screen scroll-smooth bg-[radial-gradient(circle_at_top,_rgba(110,125,255,0.16),_transparent_22%),radial-gradient(circle_at_right,_rgba(0,209,255,0.08),_transparent_28%),linear-gradient(180deg,_#0a0b10_0%,_#09090b_100%)] text-zinc-100">
       <div className="mx-auto flex min-h-screen w-full max-w-[1600px] gap-6 px-4 py-4 lg:px-6 lg:py-6">
         <aside className="hidden w-[260px] shrink-0 rounded-[28px] border border-white/10 bg-black/25 p-5 shadow-2xl backdrop-blur-xl lg:flex lg:flex-col">
           <div className="mb-8">
@@ -152,34 +174,7 @@ export default async function Home() {
             </div>
           </div>
 
-          <nav className="space-y-7">
-            {sidebar.map((group) => (
-              <div key={group.section}>
-                <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.24em] text-zinc-500">
-                  {group.section}
-                </p>
-                <div className="space-y-1.5">
-                  {group.items.map((item, index) => {
-                    const active = item === "Home";
-                    return (
-                      <button
-                        key={item}
-                        className={cx(
-                          "flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-sm transition",
-                          active
-                            ? "bg-white/[0.08] text-zinc-50 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
-                            : "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200",
-                        )}
-                      >
-                        <span>{item}</span>
-                        <span className="text-[11px] text-zinc-600">0{index + 1}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </nav>
+          <SidebarNav groups={sidebar} />
 
           <div className="mt-auto rounded-3xl border border-cyan-400/20 bg-cyan-400/8 p-4">
             <p className="text-sm font-medium text-cyan-100">Local-first by design</p>
@@ -305,7 +300,7 @@ export default async function Home() {
                 </div>
               </Panel>
 
-              <Panel title="Health summary" eyebrow="Host posture">
+              <Panel id="health-summary" title="Health summary" eyebrow="Host posture">
                 <div className="space-y-4">
                   <ProgressRow label="CPU load" value={health.cpuLoadPercent} note={`1-minute load normalized across cores · ${health.platform}`} />
                   <ProgressRow label="Memory" value={health.memoryPercent} note="Live host memory use from the local machine." />
